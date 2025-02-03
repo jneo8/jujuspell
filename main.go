@@ -5,6 +5,5 @@ import (
 )
 
 func main() {
-	execFunc := cmd.InitializeExecute()
-	execFunc()
+	cmd.Execute()
 }

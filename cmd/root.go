@@ -1,41 +1,61 @@
 package cmd
 
 import (
+	"io"
 	"os"
+	"time"
 
-	"github.com/jneo8/jujuspell/app"
-	"github.com/sirupsen/logrus"
+	"github.com/jneo8/jujuspell/config"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
 func init() {
-	rootCmd.PersistentFlags().String("config", "", "config file (default is $HOME/.cobra.yaml)")
-	rootCmd.PersistentFlags().String("log_level", "debug", "Logger level")
-	rootCmd.PersistentFlags().String("log_file", "./juju-spell.log", "Log file path")
 }
 
-var rootCmd = &cobra.Command{
-	Use:   "juju-spell",
-	Short: "Juju Spell",
-	Long:  "This is a sample Cobra CLI application",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		app, err := app.InitializeRootApp()
-		if err != nil {
-			return err
-		}
-		defer app.Close()
-		if err := app.Setup(cmd); err != nil {
-			return err
-		}
-		return app.Execute()
-	},
+func configureLogger(logFile io.Writer) {
+	consoleWriter := zerolog.ConsoleWriter{
+		Out:        logFile,
+		TimeFormat: time.RFC3339,
+	}
+
+	log.Logger = zerolog.New(consoleWriter).With().Timestamp().Logger()
 }
 
-func GetExecute(logger *logrus.Logger) func() {
-	return func() {
-		if err := rootCmd.Execute(); err != nil {
-			logger.Error(err)
-			os.Exit(1)
-		}
+const (
+	appName      = config.AppName
+	shortAppDesc = "A graphical CLI for your Juju cluster management."
+	longAppDesc  = "JujuSpell is a CLI to view and manage your juju clusters."
+)
+
+var (
+	rootCmd = &cobra.Command{
+		Use:   appName,
+		Short: shortAppDesc,
+		Long:  longAppDesc,
+		RunE:  run,
+	}
+)
+
+func run(cmd *cobra.Command, args []string) error {
+	// Setup logger & log file
+	logFilePath, err := config.CreateLogFile()
+	if err != nil {
+		return err
+	}
+	logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, config.LogsFileMod)
+	if err != nil {
+		return err
+	}
+	defer logFile.Close()
+	configureLogger(logFile)
+	log.Debug().Msg("Setup logger")
+	return nil
+}
+
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
 	}
 }

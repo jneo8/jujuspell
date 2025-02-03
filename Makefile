@@ -1,14 +1,11 @@
-##@ Golang
+##@ Basic
 
-wire:  ## Run wire for all packages
-	wire ./app
-	wire ./cmd
-	wire ./jujuclient
-
-run: wire  ## Run main
+run:  ## Run
 	go run ./main.go
+test:  ## Run test
+	go test -v ./...
 
-.PHONY: run wire
+.PHONY: run test
 
 ##@ Help
 
