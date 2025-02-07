@@ -6,6 +6,9 @@ import (
 	"time"
 
 	"github.com/jneo8/jujuspell/config"
+	"github.com/jneo8/jujuspell/jujuclient"
+	"github.com/jneo8/jujuspell/view"
+	jclient "github.com/juju/juju/jujuclient"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -51,7 +54,15 @@ func run(cmd *cobra.Command, args []string) error {
 	defer logFile.Close()
 	configureLogger(logFile)
 	log.Debug().Msg("Setup logger")
-	return nil
+
+	clientStore := jclient.NewFileClientStore()
+	client, err := jujuclient.NewJujuClient(clientStore)
+	if err != nil {
+		return err
+	}
+
+	app := view.NewApp(client)
+	return app.Exec()
 }
 
 func Execute() {
