@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
 	"github.com/jneo8/jujuspell/model"
@@ -35,4 +36,12 @@ type UIController interface {
 		wg *sync.WaitGroup,
 		errCh chan error,
 	)
+}
+
+type ResourceViewer interface {
+	Refresh(model.RefreshMsg)
+	View() string
+	Update(msg tea.Msg) tea.Cmd
+	GetQueryJob() model.QueryJob
+	GetKeyMap() help.KeyMap
 }

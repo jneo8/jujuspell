@@ -44,9 +44,7 @@ func (u *ui) RunProgram(
 }
 
 func (u *ui) Send(msg tea.Msg) {
-	log.Debug().Msg("ui Send msg")
 	u.program.Send(msg)
-	log.Debug().Msg("ui finish Send msg")
 }
 
 func (u *ui) GetQueryJobs() map[uuid.UUID]model.QueryJob {

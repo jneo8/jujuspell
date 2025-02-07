@@ -1,8 +1,8 @@
 package view
 
 import (
-	"sync"
-
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -12,14 +12,46 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type AddResourceViewerMsg struct{ ResourceType model.ResourceType }
+
 type rootModel struct {
 	currentTab      uuid.UUID
 	resourceViewers map[uuid.UUID]ResourceViewer
+	help            help.Model
+}
+
+type rootModelKeyMap struct {
+	Help key.Binding
+	Quit key.Binding
+}
+
+var rootModelKeys = rootModelKeyMap{
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "toggle help"),
+	),
+	Quit: key.NewBinding(
+		key.WithKeys("q", "ctrl+c"),
+		key.WithHelp("q / ctrl+c", "quit"),
+	),
+}
+
+func (m rootModelKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{m.Help, m.Quit},
+	}
+}
+
+func (m rootModelKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{
+		m.Help, m.Quit,
+	}
 }
 
 func getRootModel() Model {
 	m := rootModel{
 		resourceViewers: make(map[uuid.UUID]ResourceViewer),
+		help:            help.New(),
 	}
 	return &m
 }
@@ -34,29 +66,29 @@ func (m *rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	log.Debug().Interface("Msg", msg).Type("type", msg).Msg("Msg")
 
 	var cmd tea.Cmd
+	currentTab := m.getCurrentTab()
+
 	switch msg := msg.(type) {
-	case model.RefreshMsg:
-		if viewer, ok := m.resourceViewers[msg.GetJobID()]; ok {
-			viewer.Refresh(msg)
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, rootModelKeys.Quit):
+			return m, tea.Quit
+		case key.Matches(msg, rootModelKeys.Help):
+			m.help.ShowAll = !m.help.ShowAll
+		default:
+			if currentTab != nil {
+				cmd = currentTab.Update(msg)
+			}
 		}
 	case AddResourceViewerMsg:
 		m.addResourceViewer(msg)
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "esc":
-			// if m.getCurrentTab().Focused() {
-			// 	m.getCurrentTab().Blur()
-			// } else {
-			// 	m.getCurrentTab().Focus()
-			// }
-		case "q", "ctrl+c":
-			return m, tea.Quit
-		case "enter":
-			log.Debug().Msg("Enter")
-		default:
-			if currentTab := m.getCurrentTab(); currentTab != nil {
-				cmd = currentTab.Update(msg)
-			}
+	case model.RefreshMsg:
+		if currentTab != nil {
+			currentTab.Refresh(msg)
+		}
+	default:
+		if currentTab != nil {
+			cmd = currentTab.Update(msg)
 		}
 	}
 
@@ -68,7 +100,41 @@ func (m *rootModel) View() string {
 	for _, viewer := range m.resourceViewers {
 		views = append(views, viewer.View())
 	}
-	return baseStyle.Render(lipgloss.JoinVertical(lipgloss.Left, views...))
+	helpView := m.getHelpView()
+
+	return baseStyle.Render(
+		lipgloss.JoinVertical(
+			lipgloss.Top,
+			[]string{
+				lipgloss.JoinVertical(lipgloss.Left, views...),
+				helpView,
+			}...,
+		),
+	)
+}
+
+func (m *rootModel) getHelpView() (helpView string) {
+	currentTab := m.getCurrentTab()
+	if !m.help.ShowAll {
+		keyBindings := rootModelKeys.ShortHelp()
+		if currentTab != nil {
+			keyBindings = append(
+				currentTab.GetKeyMap().ShortHelp(),
+				keyBindings...,
+			)
+		}
+		helpView = m.help.ShortHelpView(keyBindings)
+	} else {
+		keyBindings := rootModelKeys.FullHelp()
+		if currentTab != nil {
+			keyBindings = append(
+				currentTab.GetKeyMap().FullHelp(),
+				keyBindings...,
+			)
+		}
+		helpView = m.help.FullHelpView(keyBindings)
+	}
+	return helpView
 }
 
 func (m *rootModel) getCurrentTab() ResourceViewer {
@@ -90,7 +156,7 @@ func (m *rootModel) addResourceViewer(msg AddResourceViewerMsg) {
 	case data.ControllerResourceType:
 		m.resourceViewers[id] = &controllerResourceViewer{
 			ID: id,
-			Model: table.New(
+			table: table.New(
 				table.WithFocused(true),
 			),
 			QueryJob: model.QueryJob{
@@ -98,52 +164,8 @@ func (m *rootModel) addResourceViewer(msg AddResourceViewerMsg) {
 				ResourceType: msg.ResourceType,
 				Filter:       "",
 			},
+			keyMap: controllerResourceViewerKeys,
 		}
 	}
 	m.currentTab = id
-}
-
-type AddResourceViewerMsg struct{ ResourceType model.ResourceType }
-
-type ResourceViewer interface {
-	Refresh(model.RefreshMsg)
-	View() string
-	Update(msg tea.Msg) tea.Cmd
-	GetQueryJob() model.QueryJob
-}
-
-type controllerResourceViewer struct {
-	ID                   uuid.UUID
-	Model                table.Model
-	QueryJob             model.QueryJob
-	setCurrentController sync.Once
-}
-
-func (viewer *controllerResourceViewer) Refresh(msg model.RefreshMsg) {
-	controllerRefreshMsg := msg.(*data.ControllerRefreshMsg)
-	viewer.Model.SetColumns(controllerRefreshMsg.Columns)
-	viewer.Model.SetRows(controllerRefreshMsg.Rows)
-	viewer.setCurrentController.Do(
-		func() {
-			for i, row := range controllerRefreshMsg.Rows {
-				if row[0] == controllerRefreshMsg.CurrentController {
-					viewer.Model.SetCursor(i)
-				}
-			}
-		},
-	)
-}
-
-func (viewer *controllerResourceViewer) View() string {
-	return viewer.Model.View()
-}
-
-func (viewer *controllerResourceViewer) Update(msg tea.Msg) tea.Cmd {
-	m, cmd := viewer.Model.Update(msg)
-	viewer.Model = m
-	return cmd
-}
-
-func (viewer *controllerResourceViewer) GetQueryJob() model.QueryJob {
-	return viewer.QueryJob
 }

@@ -49,9 +49,7 @@ func (r *refresher) Run(
 					log.Error().Err(err)
 					continue
 				}
-				log.Debug().Msg("Get msg")
 				r.uiController.Send(msg)
-				log.Debug().Msg("Send")
 			}
 		}
 		time.Sleep(3 * time.Second)
