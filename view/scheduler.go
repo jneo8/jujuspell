@@ -9,37 +9,37 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type Refresher interface {
+type Scheduler interface {
 	Run(ctx context.Context, wg *sync.WaitGroup)
 }
 
-func NewRefresher(
+func NewScheduler(
 	uiController UIController,
 	ctr data.CTR,
-) Refresher {
-	return &refresher{
+) Scheduler {
+	return &scheduler{
 		uiController: uiController,
 		ctr:          ctr,
 	}
 }
 
-type refresher struct {
+type scheduler struct {
 	uiController UIController
 	ctr          data.CTR
 }
 
-func (r *refresher) Run(
+func (s *scheduler) Run(
 	ctx context.Context, wg *sync.WaitGroup,
 ) {
 	defer wg.Done()
 	for {
-		log.Debug().Msg("Refresher loop")
+		log.Debug().Msg("Scheduler loop")
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			for _, job := range r.uiController.GetQueryJobs() {
-				worker := r.ctr.GetJobWorker(job)
+			for _, job := range s.uiController.GetQueryJobs() {
+				worker := s.ctr.GetJobWorker(job)
 				if worker == nil {
 					log.Warn().Str("resource type", string(job.ResourceType)).Msg("Unknown resource type")
 					continue
@@ -49,7 +49,7 @@ func (r *refresher) Run(
 					log.Error().Err(err)
 					continue
 				}
-				r.uiController.Send(msg)
+				s.uiController.Send(msg)
 			}
 		}
 		time.Sleep(3 * time.Second)

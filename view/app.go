@@ -17,14 +17,14 @@ var (
 type app struct {
 	ui        UIController
 	client    jujuclient.Client
-	refresher Refresher
+	scheduler Scheduler
 }
 
 func NewApp(client jujuclient.Client) App {
 	ui := NewUI()
 	return &app{
 		ui: ui,
-		refresher: NewRefresher(
+		scheduler: NewScheduler(
 			ui,
 			data.NewCTR(client),
 		),
@@ -41,7 +41,7 @@ func (a *app) Exec() error {
 	defer close(errCh)
 
 	wg.Add(2)
-	go a.refresher.Run(ctx, &wg)
+	go a.scheduler.Run(ctx, &wg)
 	go a.ui.RunProgram(ctx, cancel, &wg, errCh)
 
 	select {
