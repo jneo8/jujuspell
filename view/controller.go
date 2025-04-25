@@ -9,7 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
 	"github.com/jneo8/jujuspell/data"
-	"github.com/jneo8/jujuspell/model"
+	"github.com/rs/zerolog/log"
 )
 
 type controllerResourceViewerKeyMap struct {
@@ -43,12 +43,32 @@ var controllerResourceViewerKeys = controllerResourceViewerKeyMap{
 type controllerResourceViewer struct {
 	ID                   uuid.UUID
 	table                table.Model
-	QueryJob             model.QueryJob
+	QueryJob             data.QueryJob
 	setCurrentController sync.Once
 	keyMap               controllerResourceViewerKeyMap
 }
 
-func (viewer *controllerResourceViewer) Refresh(msg model.RefreshMsg) {
+func newControllerResourceViewer() ResourceViewer {
+	id := uuid.New()
+	return &controllerResourceViewer{
+		ID: id,
+		table: table.New(
+			table.WithFocused(true),
+		),
+		QueryJob: data.QueryJob{
+			ID:           id,
+			ResourceType: data.ControllerResourceType,
+			Filter:       "",
+		},
+		keyMap: controllerResourceViewerKeys,
+	}
+}
+
+func (viewer *controllerResourceViewer) GetID() uuid.UUID {
+	return viewer.ID
+}
+
+func (viewer *controllerResourceViewer) Refresh(msg data.RefreshMsg) {
 	controllerRefreshMsg := msg.(*data.ControllerRefreshMsg)
 	viewer.table.SetColumns(controllerRefreshMsg.Columns)
 	viewer.table.SetRows(controllerRefreshMsg.Rows)
@@ -68,12 +88,13 @@ func (viewer *controllerResourceViewer) View() string {
 }
 
 func (viewer *controllerResourceViewer) Update(msg tea.Msg) tea.Cmd {
+	log.Debug().Interface("Msg", msg).Type("type", msg).Msg("Msg")
 	m, cmd := viewer.table.Update(msg)
 	viewer.table = m
 	return cmd
 }
 
-func (viewer *controllerResourceViewer) GetQueryJob() model.QueryJob {
+func (viewer *controllerResourceViewer) GetQueryJob() data.QueryJob {
 	return viewer.QueryJob
 }
 

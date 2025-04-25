@@ -1,15 +1,17 @@
 package data
 
 import (
+	"context"
+	"sync"
+
 	"github.com/google/uuid"
 	"github.com/jneo8/jujuspell/jujuclient"
-	"github.com/jneo8/jujuspell/model"
-	"github.com/rs/zerolog/log"
 )
 
 type ctr struct {
 	workers map[uuid.UUID]JobWorker
 	client  jujuclient.Client
+	jobStatus []
 }
 
 func NewCTR(client jujuclient.Client) CTR {
@@ -19,11 +21,10 @@ func NewCTR(client jujuclient.Client) CTR {
 	}
 }
 
-func (c *ctr) GetJobWorker(job model.QueryJob) JobWorker {
-	defer log.Debug().Str("job id", job.ID.String()).Msg("Get job worker")
+func (c *ctr) AddJob(job QueryJob) {
 	// If worker already exists
-	if worker, ok := c.workers[job.ID]; ok {
-		return worker
+	if _, ok := c.workers[job.ID]; ok {
+		return
 	}
 
 	// Register new worker
@@ -31,7 +32,10 @@ func (c *ctr) GetJobWorker(job model.QueryJob) JobWorker {
 	case ControllerResourceType:
 		worker := NewControllerJobWorker(c.client)
 		c.workers[job.ID] = worker
-		return worker
 	}
-	return nil
+
+}
+
+func (c *ctr) Run(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
 }

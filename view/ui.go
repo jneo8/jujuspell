@@ -6,7 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
-	"github.com/jneo8/jujuspell/model"
+	"github.com/jneo8/jujuspell/data"
 	"github.com/rs/zerolog/log"
 )
 
@@ -47,6 +47,6 @@ func (u *ui) Send(msg tea.Msg) {
 	u.program.Send(msg)
 }
 
-func (u *ui) GetQueryJobs() map[uuid.UUID]model.QueryJob {
+func (u *ui) GetQueryJobs() map[uuid.UUID]data.QueryJob {
 	return u.model.GetQueryJobs()
 }

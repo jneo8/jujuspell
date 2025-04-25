@@ -39,17 +39,18 @@ func (s *scheduler) Run(
 			return
 		default:
 			for _, job := range s.uiController.GetQueryJobs() {
-				worker := s.ctr.GetJobWorker(job)
-				if worker == nil {
-					log.Warn().Str("resource type", string(job.ResourceType)).Msg("Unknown resource type")
-					continue
-				}
-				msg, err := worker.Fetch(job)
-				if err != nil {
-					log.Error().Err(err)
-					continue
-				}
-				s.uiController.Send(msg)
+				s.ctr.AddJob(job)
+				// worker := s.ctr.GetJobWorker(job)
+				// if worker == nil {
+				// 	log.Warn().Str("resource type", string(job.ResourceType)).Msg("Unknown resource type")
+				// 	continue
+				// }
+				// msg, err := worker.Fetch(job)
+				// if err != nil {
+				// 	log.Error().Err(err)
+				// 	continue
+				// }
+				// s.uiController.Send(msg)
 			}
 		}
 		time.Sleep(3 * time.Second)

@@ -3,16 +3,14 @@ package view
 import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 	"github.com/jneo8/jujuspell/data"
-	"github.com/jneo8/jujuspell/model"
 	"github.com/rs/zerolog/log"
 )
 
-type AddResourceViewerMsg struct{ ResourceType model.ResourceType }
+type AddResourceViewerMsg struct{ ResourceType data.ResourceType }
 
 type rootModel struct {
 	currentTab      uuid.UUID
@@ -67,6 +65,7 @@ func (m *rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	var cmd tea.Cmd
 	currentTab := m.getCurrentTab()
+	log.Debug().Interface("CurrentTab", currentTab).Msg("CurrentTab")
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -82,7 +81,7 @@ func (m *rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case AddResourceViewerMsg:
 		m.addResourceViewer(msg)
-	case model.RefreshMsg:
+	case data.RefreshMsg:
 		if currentTab != nil {
 			currentTab.Refresh(msg)
 		}
@@ -141,8 +140,8 @@ func (m *rootModel) getCurrentTab() ResourceViewer {
 	return m.resourceViewers[m.currentTab]
 }
 
-func (m *rootModel) GetQueryJobs() map[uuid.UUID]model.QueryJob {
-	jobs := make(map[uuid.UUID]model.QueryJob)
+func (m *rootModel) GetQueryJobs() map[uuid.UUID]data.QueryJob {
+	jobs := make(map[uuid.UUID]data.QueryJob)
 	for id, viewer := range m.resourceViewers {
 		jobs[id] = viewer.GetQueryJob()
 	}
@@ -150,22 +149,11 @@ func (m *rootModel) GetQueryJobs() map[uuid.UUID]model.QueryJob {
 }
 
 func (m *rootModel) addResourceViewer(msg AddResourceViewerMsg) {
-	id := uuid.New()
 	log.Debug().Str("resource type", string(msg.ResourceType)).Msg("Add resource viewer")
 	switch msg.ResourceType {
 	case data.ControllerResourceType:
-		m.resourceViewers[id] = &controllerResourceViewer{
-			ID: id,
-			table: table.New(
-				table.WithFocused(true),
-			),
-			QueryJob: model.QueryJob{
-				ID:           id,
-				ResourceType: msg.ResourceType,
-				Filter:       "",
-			},
-			keyMap: controllerResourceViewerKeys,
-		}
+		viewer := newControllerResourceViewer()
+		m.resourceViewers[viewer.GetID()] = viewer
+		m.currentTab = viewer.GetID()
 	}
-	m.currentTab = id
 }

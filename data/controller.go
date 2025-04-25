@@ -4,12 +4,11 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/google/uuid"
 	"github.com/jneo8/jujuspell/jujuclient"
-	"github.com/jneo8/jujuspell/model"
 	"github.com/rs/zerolog/log"
 )
 
 const (
-	ControllerResourceType model.ResourceType = "Controller"
+	ControllerResourceType ResourceType = "Controller"
 )
 
 func NewControllerJobWorker(
@@ -22,7 +21,7 @@ type controllerJobWorker struct {
 	client jujuclient.Client
 }
 
-func (c *controllerJobWorker) Fetch(queryJob model.QueryJob) (model.RefreshMsg, error) {
+func (c *controllerJobWorker) Fetch(queryJob QueryJob) (RefreshMsg, error) {
 	rows, errs := c.client.GetControllerData()
 	if len(errs) != 0 {
 		for _, err := range errs {
@@ -67,7 +66,7 @@ func (c *controllerJobWorker) getRefreshMsg(
 	rows []table.Row,
 	columns []table.Column,
 	currentController string,
-) model.RefreshMsg {
+) RefreshMsg {
 	return &ControllerRefreshMsg{
 		baseRefreshMsg: &baseRefreshMsg{
 			queryJobID: queryJobID,

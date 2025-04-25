@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
-	"github.com/jneo8/jujuspell/model"
+	"github.com/jneo8/jujuspell/data"
 )
 
 type App interface {
@@ -20,7 +20,7 @@ type Model interface {
 }
 
 type QueryJobController interface {
-	GetQueryJobs() map[uuid.UUID]model.QueryJob
+	GetQueryJobs() map[uuid.UUID]data.QueryJob
 }
 
 type teaProgramWrapper interface {
@@ -39,9 +39,10 @@ type UIController interface {
 }
 
 type ResourceViewer interface {
-	Refresh(model.RefreshMsg)
+	GetID() uuid.UUID
+	Refresh(data.RefreshMsg)
 	View() string
 	Update(msg tea.Msg) tea.Cmd
-	GetQueryJob() model.QueryJob
+	GetQueryJob() data.QueryJob
 	GetKeyMap() help.KeyMap
 }

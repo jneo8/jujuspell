@@ -1,17 +1,34 @@
 package data
 
 import (
+	"context"
+	"sync"
+
 	"github.com/google/uuid"
-	"github.com/jneo8/jujuspell/model"
 )
 
 type CTR interface {
-	GetJobWorker(job model.QueryJob) JobWorker
+	AddJob(job QueryJob)
+	Run(ctx context.Context, wg *sync.WaitGroup)
 }
 
 // 1 to 1 mapping to QueryJob
+type DataFetcher interface {
+	Fetch(queryJob QueryJob) (RefreshMsg, error)
+}
+
+type Worker interface {
+	Run()
+	Stop()
+}
+
 type JobWorker interface {
-	Fetch(queryJob model.QueryJob) (model.RefreshMsg, error)
+	DataFetcher
+	Worker
+}
+
+type RefreshMsg interface {
+	GetJobID() uuid.UUID
 }
 
 type baseRefreshMsg struct {
@@ -20,4 +37,13 @@ type baseRefreshMsg struct {
 
 func (msg *baseRefreshMsg) GetJobID() uuid.UUID {
 	return msg.queryJobID
+}
+
+type ResourceType string
+type Filter string
+
+type QueryJob struct {
+	ID           uuid.UUID
+	ResourceType ResourceType
+	Filter       Filter
 }
